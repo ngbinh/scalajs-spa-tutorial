@@ -83,6 +83,18 @@ object Settings {
 }
 
 object ApplicationBuild extends Build {
+
+  // Command for building a release
+  val ReleaseCmd = Command.command("release") {
+    state => "set productionBuild in js := true" ::
+      "sharedProjectJS/test" ::
+      "sharedProjectJS/fullOptJS" ::
+      "sharedProjectJS/packageJSDependencies" ::
+      "test" ::
+      "stage" ::
+      state
+  }
+
   // root project aggregating the JS and JVM projects
   lazy val root = project.in(file(".")).
     aggregate(js, jvm).
@@ -90,6 +102,7 @@ object ApplicationBuild extends Build {
       name := "SPAtutorial",
       version := Settings.version,
       publish := {},
+      commands += ReleaseCmd,
       publishLocal := {}
     )
 
@@ -197,17 +210,6 @@ object ApplicationBuild extends Build {
     }
   ).enablePlugins(SbtWeb)
 
-  // Command for building a release
-  val ReleaseCmd = Command.command("release") {
-    state => "set productionBuild in js := true" ::
-      "sharedProjectJS/test" ::
-      "sharedProjectJS/fullOptJS" ::
-      "sharedProjectJS/packageJSDependencies" ::
-      "test" ::
-      "stage" ::
-      state
-  }
-
   // instantiate the JVM project for SBT with some additional settings
   lazy val jvm: Project = sharedProject.jvm.settings(js2jvmSettings: _*).settings(
     // scala.js output is directed under "web/js" dir in the jvm project
@@ -215,7 +217,6 @@ object ApplicationBuild extends Build {
     // set environment variables in the execute scripts
     NativePackagerKeys.batScriptExtraDefines += "set PRODUCTION_MODE=true",
     NativePackagerKeys.bashScriptExtraDefines += "export PRODUCTION_MODE=true",
-    commands += ReleaseCmd,
     // reStart depends on running fastOptJS on the JS project
     Revolver.reStart <<= Revolver.reStart dependsOn (fastOptJS in(js, Compile))
   ).enablePlugins(SbtWeb).enablePlugins(JavaAppPackaging)
